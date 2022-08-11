@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:web_socket_channel/io.dart' as io;
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,21 +12,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Websocket demo',
       theme: ThemeData(
         brightness: Brightness.dark,
       ),
       debugShowCheckedModeBanner: false,
-      home: MyHomePage(),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  final WebSocketChannel channel =
-      io.IOWebSocketChannel.connect('wss://echo.websocket.events/');
-
-  MyHomePage({Key? key}) : super(key: key);
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -37,11 +32,19 @@ class _MyHomePageState extends State<MyHomePage> {
   final textController = TextEditingController();
   Color containerColor = const Color(0xffffaaff);
   String message = '';
+  late Socket socket;
 
   @override
   void initState() {
-    widget.channel.stream.listen(receiveData);
+    initSocket();
     super.initState();
+  }
+
+  void initSocket() async {
+    socket = await Socket.connect('192.168.1.150', 3000);
+    socket.listen((event) {
+      receiveData(event);
+    });
   }
 
   @override
@@ -86,9 +89,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void sendData() {
+  void sendData() async {
     if (textController.text.isNotEmpty) {
-      widget.channel.sink.add(textController.text);
+      socket.write(textController.text);
       textController.text = '';
     }
   }
@@ -115,8 +118,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    widget.channel.sink.close();
-
+    socket.close();
     super.dispose();
   }
 }
