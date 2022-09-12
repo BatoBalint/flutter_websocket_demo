@@ -1,8 +1,5 @@
-import 'dart:ffi';
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,6 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Color containerColor = const Color(0xffffaaff);
   String message = '';
   late Socket socket;
+  final String url = 'http://192.168.1.150:3000';
 
   @override
   void initState() {
@@ -42,28 +40,29 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
-  void initSocket() async {
-    try {
-      socket = await Socket.connect('192.168.106.86', 3000,
-          timeout: const Duration(seconds: 5));
-      socket.listen(receiveData);
-    } on Exception {
-      showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Test'),
-              content: const Text('Couldn\'t connect to server.'),
-              actions: [
-                ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text('OK')),
-              ],
-            );
-          });
-    }
+  void initSocket() {
+    socket = io(
+        url,
+        OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .build());
+    socket.connect();
+    socket.onConnect((data) {
+      setState(() {
+        message = 'Connected to $url';
+      });
+    });
+    // socket.onAny((event, data) {
+    //   setState(() {
+    //     message = 'Random $event';
+    //   });
+    // });
+    socket.onError((data) {
+      setState(() {
+        message = 'Error during connection ($data)';
+      });
+    });
   }
 
   @override
@@ -108,22 +107,12 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void sendData() async {
-    if (textController.text.isNotEmpty) {
-      socket.write(textController.text);
-      textController.text = '';
-    }
-  }
-
-  void receiveData(Uint8List event) {
-    setState(() {
-      message = String.fromCharCodes(event);
-    });
+  void sendData() {
+    socket.emit('test', 'haloooo');
   }
 
   @override
   void dispose() {
-    socket.close();
     super.dispose();
   }
 }
